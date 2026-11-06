@@ -1,0 +1,38 @@
+<!DOCTYPE html><html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>atraco.chapter26 Admin</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#0a0a0f;color:#f3efe6;margin:0;padding:16px}
+h1{color:#e8c26a;margin:0 0 12px}
+input,select,button{padding:9px 12px;border-radius:8px;border:1px solid #444;background:#14141c;color:#fff;font-size:14px}
+button{cursor:pointer;background:#e8c26a;color:#222;border:0;font-weight:600}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.stat{background:#14141c;border:1px solid #333;border-radius:12px;padding:12px 18px;min-width:120px}
+.stat b{display:block;font-size:26px;color:#e8c26a}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px}
+th,td{padding:9px 8px;border-bottom:1px solid #2a2a33;text-align:left}th{color:#e8c26a}
+.s{padding:3px 10px;border-radius:20px;font-size:12px}.Paid{background:#12301f;color:#8de8b0}.Pending{background:#3a3010;color:#ffd75e}.Rejected{background:#3a1517;color:#ff9fa1}
+.bar{display:flex;gap:8px;flex-wrap:wrap}
+</style></head><body>
+<h1>atraco.chapter26 – Payment Dashboard</h1>
+<div class="bar" id="login"><input id="url" placeholder="Apps Script URL"><input id="key" type="password" placeholder="Admin password"><button onclick="go()">Login</button></div>
+<div id="app" hidden>
+<div class="stats" id="stats"></div>
+<div class="bar"><input id="q" placeholder="Search naam / phone / UTR" oninput="draw()"><select id="flt" onchange="draw()"><option value="">All</option><option>Pending</option><option>Paid</option><option>Rejected</option></select><button onclick="load()">Refresh</button></div>
+<div class="tw"><table><thead><tr><th>#</th><th>Time</th><th>Naam</th><th>Phone</th><th>College</th><th>Pass</th><th>₹</th><th>UTR</th><th>Status</th><th>Action</th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+<script>
+let rows=[],U,K;const $=i=>document.getElementById(i);
+U=localStorage.getItem('u')||'';K=localStorage.getItem('k')||'';$('url').value=U;$('key').value=K;if(U&&K)go();
+function go(){U=$('url').value.trim();K=$('key').value;localStorage.setItem('u',U);localStorage.setItem('k',K);load()}
+async function load(){
+ try{const r=await(await fetch(`${U}?action=list&key=${encodeURIComponent(K)}`)).json();
+ if(r.error){alert('Galat password');return}
+ rows=r.rows;$('login').hidden=true;$('app').hidden=false;draw()}catch(e){alert('Load nahi hua: '+e)}}
+function draw(){
+ const q=$('q').value.toLowerCase(),f=$('flt').value;
+ const paid=rows.filter(r=>r.status=='Paid');
+ $('stats').innerHTML=[['Total',rows.length],['Paid',paid.length],['Pending',rows.filter(r=>r.status=='Pending').length],['Collected ₹',paid.reduce((a,r)=>a+Number(r.amount||0),0)]].map(x=>`<div class="stat"><b>${x[1]}</b>${x[0]}</div>`).join('');
+ $('tb').innerHTML=rows.filter(r=>(!f||r.status==f)&&(!q||Object.values(r).join(' ').toLowerCase().includes(q))).map(r=>`<tr><td>${r.row}</td><td>${new Date(r.time).toLocaleString('en-IN')}</td><td>${esc(r.name)}</td><td><a style="color:#8cf" href="https://wa.me/91${esc(r.phone)}" target="_blank">${esc(r.phone)}</a></td><td>${esc(r.college)}</td><td>${esc(r.passType)}</td><td>${esc(r.amount)}</td><td>${esc(r.utr)}</td><td><span class="s ${r.status}">${r.status}</span></td><td><button onclick="set(${r.row},'Paid')">✔ Paid</button> <button onclick="set(${r.row},'Rejected')" style="background:#ff9fa1">✖</button></td></tr>`).join('')}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function set(row,s){await fetch(`${U}?action=set&row=${row}&status=${s}&key=${encodeURIComponent(K)}`);load()}
+</script></body></html>
